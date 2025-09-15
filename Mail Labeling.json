@@ -1,0 +1,253 @@
+{
+  "name": "Mail Labeling",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3cc20a6d-4adf-4de8-8889-a49f0ae0ed15",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "do35XpPacyPm9W1b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.text }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Sponsorship",
+              "description": "Emails about sponsored content, brand deals, promotions, and partnership opportunities."
+            },
+            {
+              "category": "Collaboration",
+              "description": "Messages on teamwork, joint projects, and partnership invitations."
+            },
+            {
+              "category": "Other",
+              "description": "All other emails that do not meet the descriptions of the above labels"
+            },
+            {
+              "category": "Business Inquiries",
+              "description": "Professional requests, client inquiries, and formal business proposals."
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        -192
+      ],
+      "id": "b578bb2a-62ef-486b-a306-ba2ed01f125a",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        560,
+        240
+      ],
+      "id": "35d81b32-baea-4f58-8ac7-64a9dbd42bab",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ip8yv58GIKzQrROi",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_4042399326168212573"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        -368
+      ],
+      "id": "77963cfa-8540-4d82-8542-98f92b3a2aaa",
+      "name": "Sponsorship",
+      "webhookId": "6b6390f7-2a99-46d1-af95-d7f891251c98",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "do35XpPacyPm9W1b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_3286131438012230938"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        -160
+      ],
+      "id": "81b5252b-6628-4c21-b3d7-deba2c7d3974",
+      "name": "Collaboration",
+      "webhookId": "6b6390f7-2a99-46d1-af95-d7f891251c98",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "do35XpPacyPm9W1b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_2517073827879252569"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        16
+      ],
+      "id": "590ed802-7f56-4eff-b5ba-912468638056",
+      "name": "Other",
+      "webhookId": "6b6390f7-2a99-46d1-af95-d7f891251c98",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "do35XpPacyPm9W1b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_5853011538559485415"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        240
+      ],
+      "id": "2f7f3b2f-d26a-420a-a04e-8e3b437b6cd1",
+      "name": "Business Inquiries",
+      "webhookId": "6b6390f7-2a99-46d1-af95-d7f891251c98",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "do35XpPacyPm9W1b",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Sponsorship",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collaboration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Other",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Business Inquiries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d134c96e-c04a-4da7-b544-9958e8c7809f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "604e6cbe8e46a9e3ab8ed914f6ff1cf0d016314c3a830f1386c1509f67b8bf7f"
+  },
+  "id": "2veY8iR5oP4vAXtI",
+  "tags": []
+}

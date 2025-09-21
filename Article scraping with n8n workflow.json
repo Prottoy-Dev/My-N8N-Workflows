@@ -1,0 +1,379 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "- Web Scraping Tool: Use Firecrawl (or HTTP Request) to fetch article text.\n- AI Summarization Tool: Summarize the article into a short summary (3–5 sentences).\n- AI Insights Tool: Extract 3–5 key insights.\n- Google Sheets Tool: Append row with:\nSession ID\nArticle URL\nSummary\nInsights\nEmail\n- Email Tool: Send email to user (from email field) with:\nSummary\nInsights\n\n",
+        "height": 304,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1184,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "aac38724-7700-404e-9803-f11dd7ba9e24",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI assistant that processes web articles.\n\n## User Question: {{ $('Webhook').item.json.body.user_question }}\n## You will always receive the full article content in markdown format, which is : {{ $json.data.markdown }}\n## User Email: {{ $('Webhook').item.json.body.user_email }}\n\nYou have these tools:\n- tool_send_gmail: to send mail to the user's Gmail account.\n- add_row_in_sheet: to append a row in the Google Sheet.\n\nFollow these tasks:\n1. Try to answer the questions the user asks.\n2. Communicate with the user in a humble way with a good sense of humor.\n2. Ask, and if the user wants a summary, then create a clear, factual summary of the article in 3–5 sentences. Do not add opinions or extra commentary. Keep it concise and neutral.\n3. Ask, and if the user wants insights, then extract 3–5 key insights or takeaways. Each insight should be a short, standalone point. Avoid repeating the summary; highlight deeper lessons or facts in short.\n4. Ask, and if the user wants to send the summary and key insights to his/her Gmail, then use the tool_send_gmail tool. Make sure that the mail body starts with a greeting. Most importantly, keep the 'summary' and 'key insights' both in capital with bold text. Make sure that the summary and the key insight are in different paragraphs.\n5. After sending the mail, use the add_row_in_sheet tool to append a row in the Google Sheet.\n6. If the user does not receive the mail, then repeat using the tool_send_gmail and add_row_in_sheet tools.\n7. If the user keeps facing problems, then suggest the user reload the page or use a different 'Session ID' or a different 'Article URL'.\n8. For a different article, you must tell the user to reload the page and change the 'Session ID'.\n\n\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -144,
+        -80
+      ],
+      "id": "58cd20f6-b1e6-4c37-a509-ff546e357b4c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        128
+      ],
+      "id": "29ee4376-96c0-40cd-893e-a9ad046b38ef",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1DXBipNdrekOZ4HA",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.session_id }}{{ $('Scrape a url and get its content').item.json.data.markdown }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        128
+      ],
+      "id": "984b37de-037c-464e-805b-a11217e5b266",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "scrape",
+        "url": "={{ $json.body.article_url }}",
+        "requestOptions": {}
+      },
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -80
+      ],
+      "id": "27333089-3a90-4349-8be1-e46a3c8c4c7b",
+      "name": "Scrape a url and get its content",
+      "credentials": {
+        "firecrawlApi": {
+          "id": "fBZOXSIBJPUC65ai",
+          "name": "Firecrawl account 2"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to append rows in the Google Sheet.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nyfEaFZFb_yybDIrleZi_fcueDZDinOEBg_LcWAfb4I",
+          "mode": "list",
+          "cachedResultName": "article",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nyfEaFZFb_yybDIrleZi_fcueDZDinOEBg_LcWAfb4I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1nyfEaFZFb_yybDIrleZi_fcueDZDinOEBg_LcWAfb4I/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Session ID": "={{ $('Webhook').item.json.body.session_id }}",
+            "Article URL": "={{ $('Webhook').item.json.body.article_url }}",
+            "Summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', `The summary that is sent to the gmail account`, 'string') }}",
+            "Insignts": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Insignts', `The key insights that are sent to the gmail account`, 'string') }}",
+            "Email": "={{ $('Webhook').item.json.body.user_email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Session ID",
+              "displayName": "Session ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Article URL",
+              "displayName": "Article URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Insignts",
+              "displayName": "Insignts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        272,
+        128
+      ],
+      "id": "c9ed0042-b1ac-41b7-b284-e7f830c4af13",
+      "name": "add_row_in_sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "C0IJ1Oksk6z9CnmY",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to send email. ",
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        128
+      ],
+      "id": "3da51474-3793-4216-8cff-b5fcfb8aa15c",
+      "name": "tool_send_gmail",
+      "webhookId": "92acf1c5-26ab-4a34-831d-d25028a97f49",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "En23avHnlS7lWVIy",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f67cc3fb-2b7d-462d-8350-8a4dd7bbfc69",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -736,
+        -80
+      ],
+      "id": "5fd50fe0-29dc-4255-ab1f-4bd2c22b2272",
+      "name": "Webhook",
+      "webhookId": "f67cc3fb-2b7d-462d-8350-8a4dd7bbfc69"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        -80
+      ],
+      "id": "ece15326-a679-4c1d-8f0d-36a031faca8e",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "ranger.app.n8n.cloud",
+            "user-agent": "python-httpx/0.25.2",
+            "content-length": "164",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "45.125.223.153",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "BD",
+            "cf-ray": "9820fadc5107a029-SIN",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "45.125.223.153, 162.158.171.2",
+            "x-forwarded-host": "ranger.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-81-6b7d5f4f4f-6g9dm",
+            "x-is-trusted": "yes",
+            "x-real-ip": "45.125.223.153"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "user_question": "lets try again",
+            "user_email": "prottoydev@gmail.com",
+            "session_id": "1234567",
+            "article_url": "https://www.nrdc.org/stories/global-warming-101"
+          },
+          "webhookUrl": "https://ranger.app.n8n.cloud/webhook/f67cc3fb-2b7d-462d-8350-8a4dd7bbfc69",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape a url and get its content": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add_row_in_sheet": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_send_gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Scrape a url and get its content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3e5d5506-64ca-4cc3-944e-fcf617c63c53",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18281e8d886d44ca2cee3c5782b83a9e2f40bc0c4b22b774ba9bb2f0cbc0fc08"
+  },
+  "id": "XURy5KCD4gM6xxzU",
+  "tags": []
+}

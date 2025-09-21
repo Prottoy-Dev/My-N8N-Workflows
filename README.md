@@ -1,46 +1,88 @@
-# Chat API
+# My N8N Workflows Collection
 
-A FastAPI application that provides a `/chat` endpoint to forward user chat requests to an n8n webhook.
+Welcome to my collection of N8N workflows! This repository contains various automation workflows created and exported from N8N, covering different use cases and integrations.
 
-## Features
+## About N8N
 
-- FastAPI-based REST API
-- Email validation for user emails
-- Error handling and timeout management
-- Async webhook forwarding
+N8N is an open-source workflow automation tool that allows you to connect different services and automate tasks through a visual interface. Each workflow in this repository is provided as a JSON file that can be imported directly into your N8N instance.
 
-## Installation
+## Article Insights Chatbot Project
 
-1. Install dependencies:
+This repository contains a complete full-stack application built around an N8N workflow for article analysis and insights generation.
+
+### Project Structure
+
+- `Article scraping with n8n workflow.json` - Main N8N workflow for article processing
+- `fast_api.py` - FastAPI backend server
+- `chatbot_frontend_js/` - React TypeScript frontend application
+- `requirements.txt` - Python dependencies
+
+### Features
+
+- **Article Processing**: Web scraping and AI-powered analysis
+- **Real-time Chat Interface**: Interactive frontend for user queries
+- **Email Integration**: Automated email delivery of insights
+- **Data Logging**: Google Sheets integration for data persistence
+- **AI-Powered Insights**: Google Gemini integration for intelligent analysis
+
+### Tech Stack
+
+- **Backend**: FastAPI with async webhook integration
+- **Frontend**: React + TypeScript + Vite + Shadcn UI
+- **Automation**: N8N workflow with Google Gemini AI
+- **Database**: Google Sheets for data persistence
+- **Email**: Gmail integration for notifications
+
+### Installation and Setup
+
+#### Backend Setup
+
+1. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running the Application
-
-1. Start the server:
+2. Start the FastAPI server:
 ```bash
-python main.py
+uvicorn fast_api:app --reload
 ```
 
-Or using uvicorn directly:
+#### Frontend Setup
+
+1. Navigate to the frontend directory:
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd chatbot_frontend_js
 ```
 
-2. The API will be available at `http://localhost:8000`
-3. Interactive API documentation will be available at `http://localhost:8000/docs`
+2. Install Node.js dependencies:
+```bash
+npm install
+```
 
-## API Endpoints
+3. Start the development server:
+```bash
+npm run dev
+```
 
-### POST /chat
+#### N8N Workflow Setup
 
-Accepts chat requests and forwards them to the configured webhook.
+1. Import the workflow file `Article scraping with n8n workflow.json` into your N8N instance
+2. Configure the required credentials:
+   - Google Gemini API key
+   - Gmail credentials
+   - Google Sheets access
+3. Set up the webhook URL in the FastAPI configuration
+
+### API Endpoints
+
+#### POST /chat
+
+Accepts chat requests and forwards them to the N8N webhook.
 
 **Request Body:**
 ```json
 {
-  "user_question": "What is the weather today?",
+  "user_question": "What are the key insights from this article?",
   "user_email": "user@example.com",
   "session_id": "session_123",
   "article_url": "https://example.com/article"
@@ -54,39 +96,14 @@ Accepts chat requests and forwards them to the configured webhook.
   "webhook_status": 200,
   "session_id": "session_123",
   "data": {
-    "response": "This is the data returned from the n8n webhook"
+    "output": "AI-generated insights and summary"
   }
 }
 ```
 
-### GET /
+### Configuration
 
-Health check endpoint that returns a simple message.
-
-### GET /health
-
-Health check endpoint that returns the application status.
-
-## Configuration
-
-The webhook URL is configured in the `main.py` file:
+The webhook URL is configured in the `fast_api.py` file:
 ```python
 WEBHOOK_URL = "https://ranger.app.n8n.cloud/webhook/f67cc3fb-2b7d-462d-8350-8a4dd7bbfc69"
 ```
-
-## Testing
-
-You can test the API using curl:
-
-```bash
-curl -X POST "http://localhost:8000/chat" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_question": "Hello, how are you?",
-    "user_email": "test@example.com",
-    "session_id": "test_session_001",
-    "article_url": "https://example.com/article"
-  }'
-```
-
-Or use the interactive documentation at `http://localhost:8000/docs` to test the endpoints.

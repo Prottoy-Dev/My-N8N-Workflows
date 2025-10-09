@@ -1,0 +1,499 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://dummyjson.com/products?limit=10&skip=0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c342555b-33ba-4749-8f33-2a950a9b3363",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "bfa3e529-f901-4cb3-87b2-8232a900d36d",
+      "name": "response from all page",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "all_products = []\n\nfor item in items:\n    products = item['json']['products']\n    all_products.extend(products)\n\noutput = []\nfor p in all_products:\n    output.append({\n        'json': {\n            'id': p['id'],\n            'name': p['title'],\n            'price': p['price'],\n            'category': p['category']\n        }\n    })\n\nreturn output\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "d4cc8967-bd73-48e4-a14a-68db114bb02f",
+      "name": "fetch all product details"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "total = int(items[0]['json']['total'])\nlimit = 10  # products per page\nurls = []\n\nfor skip in range(0, total, limit):\n    url = f\"https://dummyjson.com/products?limit={limit}&skip={skip}\"\n    urls.append({'json': {'url': url}})\n\nreturn urls\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "663dedc9-335f-4288-bdd1-f5c4beb8f98c",
+      "name": "get all pages"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg",
+          "mode": "list",
+          "cachedResultName": "ecommerce",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.id }}",
+            "NAME": "={{ $json.name }}",
+            "PRICE": "={{ $json.price }}",
+            "CATAGORY": "={{ $json.category }}"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NAME",
+              "displayName": "NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "PRICE",
+              "displayName": "PRICE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CATAGORY",
+              "displayName": "CATAGORY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "2e727985-8c10-4be3-a50d-c9bb00e368cd",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "TGEJv8Hf1iVL7UJG",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert data analyst. You are given the following email content:\nSubject: {{ $json.headers.subject }}\nBody: {{ $json.text }}\n\nExtract the following from this email:\n- Issue (whether it is an order request, or an inquiry, or any other issue)\n- Customer Name\n- Address\n- Phone\n- Mail Address={{ $json.headers.from }}\n- Product Name\n- Product ID\n- Quantity\n- Delivery Date\n- Order Placed {{ $json.headers.date }}\n- Note (a short text about the issue)"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        288,
+        384
+      ],
+      "id": "6312f5ed-2d4a-4b26-b0d3-9d1c703d3644",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "foGeKGOkEwIV2XWl",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "=\n {{ $json.content.parts[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        384
+      ],
+      "id": "8ffe29e4-70de-4acb-b0ca-24ddab12d857",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg",
+          "mode": "list",
+          "cachedResultName": "ecommerce",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PI25NOd5IN-hVZv2Pp-RSQRex-uFmJ36LXFImoOiXGg/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID",
+              "lookupValue": "={{ $json['Product ID'] }}"
+            },
+            {
+              "lookupColumn": "NAME",
+              "lookupValue": "={{ $json['Product Name'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        384
+      ],
+      "id": "8dbd9093-2b1b-4d82-b8ba-ff9652ee2385",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "TGEJv8Hf1iVL7UJG",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -176,
+        224
+      ],
+      "id": "87aadf59-529d-40e4-9436-c3de7587a2ae",
+      "name": "Gmail Trigger1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mlk1y1ESKk8PAvwC",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "847ebc3e-8ad7-43c8-86b3-2aaea217f731",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "1f1a9bf3-98ed-425f-a752-b9f52d973d7e",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        384
+      ],
+      "id": "18ac271e-2ace-4a93-a5c0-4492b29c1f38",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "boardId": "5008992566",
+        "groupId": "new_group29179",
+        "name": "={{ $('Edit Fields1').item.json.Issue }}",
+        "additionalFields": {
+          "columnValues": "={\n\"text_mkwhbqgf\": \"{{ $('Edit Fields1').item.json['Customer Name'] }}\",\n\"text_mkwhqbr\": \"{{ $('Edit Fields1').item.json.Address }}\",\n\"text_mkwhzzj5\": \"{{ $('Edit Fields1').item.json.Phone }}\",\n\"text_mkwhwt0m\": \"{{ $('Edit Fields1').item.json['Mail Address'] }}\",\n\"text_mkwhvd3\": \"{{ $json.NAME }}\",\n\"text_mkwhmfaa\": \"{{ $json.ID }}\",\n\"text_mkwh8yrb\": \"{{ $('Edit Fields1').item.json.Quantity }}\",\n\"text_mkwhhdmh\": \"{{ $('Edit Fields1').item.json['Delivery Date'] }}\",\n\"text_mkwh3ydj\": \"{{ $('Edit Fields1').item.json['Order Placed'] }}\",\n\"text_mkwhkvr2\": \"{{ $json.PRICE }}\",\n\"text_mkwh4cqj\": \"{{ $json.CATAGORY }}\",\n\"text_mkwh6mz\": \"{{ $('Edit Fields1').item.json.Note }}\"\n}"
+        }
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        256
+      ],
+      "id": "e2296dc8-289c-44c6-99b1-eedf8b56a48a",
+      "name": "Create an item in a board's group",
+      "credentials": {
+        "mondayComApi": {
+          "id": "cC0S1cIPdwTB0ul6",
+          "name": "Monday.com account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "boardItem",
+        "boardId": "5008992566",
+        "groupId": "new_group29179",
+        "name": "={{ $('Edit Fields1').item.json.Issue }}",
+        "additionalFields": {
+          "columnValues": "={\n\"text_mkwhbqgf\": \"{{ $('Edit Fields1').item.json['Customer Name'] }}\",\n\"text_mkwhqbr\": \"{{ $('Edit Fields1').item.json.Address }}\",\n\"text_mkwhzzj5\": \"{{ $('Edit Fields1').item.json.Phone }}\",\n\"text_mkwhwt0m\": \"{{ $('Edit Fields1').item.json['Mail Address'] }}\",\n\"text_mkwhvd3\": \"{{ $('Edit Fields1').item.json['Product Name'] }} N/A\",\n\"text_mkwhmfaa\": \"{{ $('Edit Fields1').item.json['Product ID'] }} N/A\",\n\"text_mkwh8yrb\": \"{{ $('Edit Fields1').item.json.Quantity }}\",\n\"text_mkwhhdmh\": \"{{ $('Edit Fields1').item.json['Delivery Date'] }}\",\n\"text_mkwh3ydj\": \"{{ $('Edit Fields1').item.json['Order Placed Date'] }}\",\n\"text_mkwhkvr2\": \"N/A\",\n\"text_mkwh4cqj\": \"N/A\",\n\"text_mkwh6mz\": \"{{ $('Edit Fields1').item.json.Note }}\"\n}"
+        }
+      },
+      "type": "n8n-nodes-base.mondayCom",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        480
+      ],
+      "id": "24ca3712-0c47-4636-ab1d-e71d3c35765f",
+      "name": "Create an item in a board's group1",
+      "credentials": {
+        "mondayComApi": {
+          "id": "cC0S1cIPdwTB0ul6",
+          "name": "Monday.com account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "get all pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "response from all page": {
+      "main": [
+        [
+          {
+            "node": "fetch all product details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch all product details": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all pages": {
+      "main": [
+        [
+          {
+            "node": "response from all page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create an item in a board's group",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create an item in a board's group1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "41d13964-c2a5-4f2d-a184-ad784dfee1f5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b51586a164f4922a6aebda4b9b4a83d2ddd2d3963bf8604f997ff0df727185fb"
+  },
+  "id": "22SCKm67peAcPzpn",
+  "tags": []
+}

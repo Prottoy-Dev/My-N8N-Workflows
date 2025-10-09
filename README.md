@@ -8,15 +8,15 @@ N8N is an open-source workflow automation tool that allows you to connect differ
 
 ## Workflows & Projects
 
-### 📧 Mail Labeling Workflow
+### Mail Labeling Workflow
 - **File**: `Mail Labeling.json`
 - **Purpose**: Automated email classification and labeling system
 
-### 📖 AI Agent Doc Reader
+### AI Agent Doc Reader
 - **File**: `AI Agent Doc Reader.json`  
 - **Purpose**: AI-powered document reading and analysis workflow
 
-### 🤖 Article Insights Chatbot Project
+### Article Insights Chatbot Project
 - **Folder**: `chatbot-with-article-analysis/`
 - **Description**: Complete full-stack application for article analysis and insights generation
 - **Tech Stack**: FastAPI + React + TypeScript + N8N + Google Gemini AI
@@ -26,6 +26,14 @@ N8N is an open-source workflow automation tool that allows you to connect differ
   - AI-powered summaries and insights
   - Email notifications
   - Google Sheets data logging
+
+### Ecommerce Automation Test Project  
+An n8n workflow that automates ecommerce operations by:  
+- Fetching product data from DummyJSON API  
+- Updating Google Sheets with product details  
+- Extracting order info from Gmail using Google Gemini AI  
+- Creating and managing tasks in Monday.com  
+
 
 [View detailed documentation](./chatbot-with-article-analysis/README.md)
 

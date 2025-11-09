@@ -35,7 +35,7 @@ An n8n workflow that automates ecommerce operations by:
 - Creating and managing tasks in Monday.com  
 
 
-[View detailed documentation](./chatbot-with-article-analysis/README.md)
+
 
 ## How to Use These Workflows
 

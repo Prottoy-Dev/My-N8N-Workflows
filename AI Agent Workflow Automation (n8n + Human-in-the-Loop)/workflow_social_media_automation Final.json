@@ -1,0 +1,285 @@
+{
+  "name": "AI Social Media Post Automation — Final",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "New Social Media Post Request",
+        "formDescription": "Enter a topic and the date/time you'd like this post scheduled for.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Topic",
+              "placeholder": "e.g. Our new eco-friendly packaging launch",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Scheduled Date/Time",
+              "fieldType": "date",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "10fdea55-48b0-41a2-812c-6cd5f9b015ae",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        128
+      ],
+      "webhookId": "4a29d9ec-3bcb-4123-a05c-20d20919c6ef"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────────────────────\n// REPLACE THIS: paste your free Gemini API key between the quotes\n// Get one (no credit card needed) at https://aistudio.google.com/apikey\n// ─────────────────────────────────────────────────────────────\nconst GEMINI_API_KEY = 'AQ.Ab8RN6Kc6yxtiqk2Z5BQ7f_9uF-OK41TySGwzgSs_602l_EyvA';\nconst MODEL = 'gemini-2.5-flash';\nconst MAX_RETRIES = 3;\n\n// Form Trigger outputs submitted fields directly on .json,\n// keyed by whatever \"Field Name\" was set on each form field.\nconst body = $input.first().json;\nconst topic          = body['Topic']                    || 'general topic';\nconst scheduled_time = body['Scheduled Date/Time']      || 'not specified';\n\n// ── Prompt engineering strategy ────────────────────────────────\n// Strategy: enforce the constraint in the system instruction (hard rule)\n// AND in the user turn (reminder + direction if we're retrying).\n// On subsequent attempts we tell the model which direction to adjust,\n// which converges faster than a blind, unconstrained retry.\nconst SYSTEM_PROMPT =\n  'You are a professional social media copywriter.\\n' +\n  'Write ONE social media post for the given topic.\\n\\n' +\n  'STRICT RULES — violating them causes an automatic retry:\\n' +\n  '- Total word count: EXACTLY between 90 and 150 words.\\n' +\n  '- Count every word including hashtags before responding.\\n' +\n  '- Include 3–5 relevant hashtags at the end.\\n' +\n  '- Output ONLY the post text — no preamble, no word-count label.';\n\nlet generated_text = '';\nlet word_count = 0;\nlet attempts = 0;\n\nwhile (attempts < MAX_RETRIES) {\n  attempts++;\n\n  // Adaptive feedback on retry: tell the model which direction it missed\n  const feedback = attempts > 1\n    ? `\\n\\nIMPORTANT: your previous attempt had ${word_count} words. ` +\n      (word_count < 90 ? 'Add more content to reach at least 90 words.'\n                       : 'Cut content to stay under 150 words.')\n    : '';\n\n  const payload = {\n    system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },\n    contents: [\n      { role: 'user', parts: [{ text: `Topic: ${topic}.${feedback}` }] }\n    ],\n    generationConfig: { temperature: 0.7, maxOutputTokens: 500, thinkingConfig: { thinkingBudget: 0 } }\n  };\n\n  const resp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,\n    headers: { 'Content-Type': 'application/json' },\n    body: payload,\n    json: true\n  });\n\n  generated_text = resp.candidates[0].content.parts[0].text.trim();\n  word_count = generated_text.split(/\\s+/).filter(w => w.length > 0).length;\n\n  if (word_count >= 90 && word_count <= 150) break;\n}\n\n// If we exhausted all retries and still can't hit the range, fail loudly\nif (word_count < 90 || word_count > 150) {\n  throw new Error(\n    `Failed to generate a post within 90–150 words after ${MAX_RETRIES} attempts. ` +\n    `Last word count: ${word_count}. Check your API key and try re-running.`\n  );\n}\n\nreturn [{\n  json: { topic, scheduled_time, generated_text, word_count, llm_attempts: attempts }\n}];"
+      },
+      "id": "3bdfc5d7-22e8-4178-b100-300c83654bf7",
+      "name": "Generate & Validate Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────────────────────\n// REPLACE THESE THREE VALUES with your Cloudinary details.\n//\n// Where to find them:\n//   CLOUD_NAME    → cloudinary.com dashboard, top-left\n//   BACKGROUND_ID → public_id shown after uploading your\n//                   background / brand template image\n//   LOGO_ID       → public_id shown after uploading your logo\n//\n// Transformation applied (pixel-perfect, same every run):\n//   Logo  : top-right corner, 20px from edges, scaled to 120px wide\n//   Title : lower-middle,     60px from bottom, white Arial bold,\n//           auto-fit to 500px wide\n// ─────────────────────────────────────────────────────────────\nconst CLOUD_NAME    = 'dfpsztll7';\nconst BACKGROUND_ID = 'brand_background';\nconst LOGO_ID       = 'brand_logo';\n\n// const item  = $input.first().json;\n// const title = (item.topic || '').slice(0, 50); // cap title length\nconst item  = $input.first().json;\nconst title = (item.topic || '').slice(0, 100); // shorter cap so it reliably fits one line\n// Cloudinary text overlays encode spaces as underscores in the path segment\n// const encodedTitle = encodeURIComponent(title).replace(/%20/g, '_');\n// Just percent-encode — do NOT convert %20 to underscore\nconst encodedTitle = encodeURIComponent(title);\n// Build the Cloudinary URL with two chained transformations:\n// l_ = layer (overlay), g_ = gravity, x/y = offset, w_ = width,\n// c_fit = fit text into the specified width without overflow\nconst FADE_STRENGTH = 60; // 0 = no fade, 100 = fully washed out\n\nconst layers = [\n  `e_colorize:${FADE_STRENGTH},co_black`,   // dims the background — try co_white for a lighter fade instead\n  `l_${LOGO_ID},g_north_east,x_20,y_20,w_120`,\n  `l_text:Arial_36_bold:${encodedTitle},g_south,y_60,co_rgb:FFFFFF,w_500,h_180,c_fit`\n];\n\nconst imageUrl = [\n  `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`,\n  ...layers,\n  BACKGROUND_ID\n].join('/');\n\nreturn [{ json: { ...item, imageUrl } }];"
+      },
+      "id": "def5361b-d576-4336-8cf3-a26dc90e7cfb",
+      "name": "Build Image Card URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "prottoydpranta@gmail.com",
+        "subject": "=[Review needed] Social post: {{ $json.topic }}",
+        "message": "=<div style='font-family:Arial,sans-serif;max-width:600px;color:#1a1a1a'>\n\n  <h2 style='margin-top:0'>📋 Social Post Review Request</h2>\n\n  <table style='width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px'>\n    <tr style='background:#f4f4f4'>\n      <td style='padding:10px 14px;font-weight:bold;width:130px'>Topic</td>\n      <td style='padding:10px 14px'>{{ $json.topic }}</td>\n    </tr>\n    <tr>\n      <td style='padding:10px 14px;font-weight:bold'>Scheduled</td>\n      <td style='padding:10px 14px'>{{ $json.scheduled_time }}</td>\n    </tr>\n    <tr style='background:#f4f4f4'>\n      <td style='padding:10px 14px;font-weight:bold'>Word count</td>\n      <td style='padding:10px 14px'>{{ $json.word_count }} words &nbsp;(target: 90–150)</td>\n    </tr>\n    <tr>\n      <td style='padding:10px 14px;font-weight:bold'>LLM attempts</td>\n      <td style='padding:10px 14px'>{{ $json.llm_attempts }}</td>\n    </tr>\n  </table>\n\n  <h3>✍️ Generated Post Copy</h3>\n  <div style='background:#f9f9f9;border-left:4px solid #0066cc;padding:16px 20px;font-size:14px;line-height:1.6;margin-bottom:24px'>\n    {{ $json.generated_text }}\n  </div>\n\n  <h3>🖼️ Image Card Preview</h3>\n  <p style='font-size:13px;color:#555'>The card is generated dynamically from the topic title each run. Logo is pinned top-right; title is pinned lower-middle.</p>\n  <a href='{{ $json.imageUrl }}' target='_blank' style='font-size:13px'>Open image card in browser ↗</a><br/><br/>\n  <img src='{{ $json.imageUrl }}' alt='Post image card preview' style='max-width:100%;border:1px solid #ddd;border-radius:6px'/>\n\n  <p style='margin-top:28px;font-size:13px;color:#777'>Click one of the buttons below. <b>Approve</b> schedules the post to both platforms. <b>Reject</b> discards it.</p>\n\n</div>",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Reject"
+          }
+        },
+        "options": {}
+      },
+      "id": "c7afa81c-105e-45b6-8690-d450db3319bc",
+      "name": "Email Reviewer — Send & Wait",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        128
+      ],
+      "webhookId": "c3809c8c-95ec-4b03-bf5d-bf56559f0ffd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GSRtskXF8uBlemuI",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://httpbin.org/post",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"platform\": \"facebook\",\n  \"status\": \"scheduled\",\n  \"topic\": \"{{ $json.topic }}\",\n  \"caption\": \"{{ $json.generated_text }}\",\n  \"image_url\": \"{{ $json.imageUrl }}\",\n  \"scheduled_time\": \"{{ $json.scheduled_time }}\"\n}",
+        "options": {}
+      },
+      "id": "dd46dfeb-5a8f-4004-8106-b90aecb3b99e",
+      "name": "Mock Publish → Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://httpbin.org/post",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"platform\": \"instagram\",\n  \"status\": \"scheduled\",\n  \"topic\": \"{{ $json.topic }}\",\n  \"caption\": \"{{ $json.generated_text }}\",\n  \"image_url\": \"{{ $json.imageUrl }}\",\n  \"scheduled_time\": \"{{ $json.scheduled_time }}\"\n}",
+        "options": {}
+      },
+      "id": "8ff65355-9105-49b2-baf2-6719270c185d",
+      "name": "Mock Publish → Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "status",
+              "value": "rejected",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "topic",
+              "value": "={{ $json.topic }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "generated_text",
+              "value": "={{ $json.generated_text }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "action",
+              "value": "Reviewer rejected this post. No content was published. Returned to draft.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "caa730c9-b2c3-44f7-a688-49ee779f8d89",
+      "name": "Post Rejected — Log & Stop",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        128,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cefca63a-5733-40da-bd82-ff87ddd3aba2",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -96,
+        128
+      ],
+      "id": "833f63f1-f04c-4448-a77f-42e3dfd0011a",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate & Validate Post": {
+      "main": [
+        [
+          {
+            "node": "Build Image Card URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Card URL": {
+      "main": [
+        [
+          {
+            "node": "Email Reviewer — Send & Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Reviewer — Send & Wait": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate & Validate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Mock Publish → Facebook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Mock Publish → Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post Rejected — Log & Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b99d9a3d-bee4-4708-9d58-4f934f33df3b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4729db38182d282ac0d5dbdb06f4d1c1aa13e531f54b136f70bb6114b665122f"
+  },
+  "nodeGroups": [],
+  "id": "GBJsF6D6W2S7I340",
+  "tags": []
+}

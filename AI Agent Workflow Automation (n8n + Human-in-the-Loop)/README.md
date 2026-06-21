@@ -103,34 +103,7 @@ n8n's Gmail node has a built-in **"Send and Wait for Approval"** operation:
   Facebook and Instagram publish requests; output 1 (rejected) routes to a
   logging node and the run ends without publishing.
 
-This is a genuine suspended execution, not a sleep loop or cron polling a
-database — it resumes exactly where it left off, with all upstream data
-(topic, generated text, image URL) intact.
 
-## Known issues fixed during development (worth mentioning in the demo)
 
-- Switched from OpenAI to Google Gemini after hitting a billing-required 429
-  on a fresh OpenAI key — Gemini's free tier needs no card.
-- Disabled Gemini 2.5 Flash's default "thinking" mode, which was silently
-  consuming the entire output token budget and returning near-empty text.
-- Corrected the Gmail node's approval-button configuration — the default is
-  single-button approval; double approval requires explicitly setting
-  `approvalType: "double"` under `approvalOptions.values`.
-- Discovered the n8n Form Trigger currently outputs submitted data keyed by
-  **Field Label**, not the configured **Field Name** — downstream nodes
-  reference fields by their exact label string as a workaround.
-- Fixed a text-rendering bug where literal spaces in Cloudinary text overlays
-  were being converted to underscore characters; switched to pure percent-
-  encoding instead.
-- Fixed title truncation (silent ellipsis) on longer topics by giving the
-  text layer explicit width *and* height, allowing it to wrap across
-  multiple lines instead of being cut off.
 
-## Demo video checklist
 
-- [ ] Submit the form with 3 different topics (one at a time)
-- [ ] Show each review email side by side, proving the logo position and
-      title position are identical across all three — only the title text
-      and length differ
-- [ ] Approve one, reject another, show both outcomes (mock publish vs. log)
-- [ ] Show the n8n execution log confirming the paused → resumed state

@@ -34,8 +34,13 @@ An n8n workflow that automates ecommerce operations by:
 - Extracting order info from Gmail using Google Gemini AI  
 - Creating and managing tasks in Monday.com  
 
-
-
+### AI Agent Workflow Automation (n8n + Human-in-the-Loop)
+An automation workflow built in n8n that takes a social media topic and schedule via form input, generates brand-consistent post copy using Google Gemini, composites a template-based image card via Cloudinary, and pauses for a human email review before publishing to mock social endpoints.
+- **Features**:
+  - **Form Trigger**: Captures user inputs for post topic and scheduled date/time.
+  - **Deterministic Compositing**: Dynamically generates a pixel-perfect image card using parameterized URLs.
+  - **Human-in-the-Loop (HITL)**: Suspends execution state and fires an email with dedicated Approve/Reject webhooks.
+  - **Parallel Publishing**: Fans out to publish to mock Facebook and Instagram endpoints simultaneously upon approval.
 
 ## How to Use These Workflows
 
